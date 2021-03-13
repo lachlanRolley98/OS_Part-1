@@ -13,11 +13,17 @@
    prior to blocking
 */
 
+
+
+
 #define BUFFLEN (BUFFER_SIZE + 1)
 
 data_item_t * item_buffer[BUFFER_SIZE+1];
 
+struct semaphore *hasRoomSem;   // This sem is itinitalised to 10 and makes sure only 10 things can be produced or it sleeps (goes down when consumed)
+struct semaphore *readyToUseSem; // This sem is initialised to 0. Goes up when things are made, down when used
 
+struct lock *myLock; 
 
 volatile int head, tail;
 
@@ -30,17 +36,15 @@ data_item_t * consumer_receive(void)
 {
         data_item_t * item;
 
-
-        while(head == tail) {
-                /* busy wait */
-        }
+        P(readyToUseSem); // makes sure there is somthing to use
+        
+        lock_acquire(myLock); 
         item = item_buffer[tail];
         tail = (tail + 1) % BUFFLEN;
-
+        lock_release(myLock);
         
-        /******************
-         * Remove above here
-         */
+        V(hasRoomSem); // tells producer we made room in the buffer
+       
 
         return item;
 }
@@ -51,11 +55,14 @@ data_item_t * consumer_receive(void)
 
 void producer_send(data_item_t *item)
 {
-        while((head + 1) % BUFFLEN == tail) {
-                /* busy wait */
-        }
+        P(hasRoomSem); // checks if there is room in buffer
+
+        lock_acquire(myLock); 
         item_buffer[head] = item;
         head = (head + 1) % BUFFLEN;
+        lock_release(myLock);
+
+        V(readyToUseSem); // tells semaphore used by consumer we good to go
 }
 
 
@@ -67,11 +74,24 @@ void producer_send(data_item_t *item)
 void producerconsumer_startup(void)
 {
         head = tail = 0;
+        hasRoomSem = sem_create("hasRoomSem", 10); // This sem is itinitalised to 10 and makes sure only 10 things can be produced or it sleeps. (goes down when consumed)
+        readyToUseSem = sem_create("readyToUseSem", 0); 
+        myLock = lock_create("myLock");
+
+        
+         KASSERT(hasRoomSem != 0);
+         KASSERT(readyToUseSem != 0);
+         KASSERT(myLock != 0);
+
+
 
 }
 
 /* Perform any clean-up you need here */
 void producerconsumer_shutdown(void)
 {
+   sem_destroy(hasRoomSem);
+   sem_destroy(readyToUseSem);
+   lock_destroy(myLock);
 }
 

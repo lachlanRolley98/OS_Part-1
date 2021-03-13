@@ -11,6 +11,12 @@
  */
 
 
+request_t * request_buffer[1000]; // can do as linked list or hard code
+volatile int head, tail;
+
+struct lock *myLock; 
+struct semaphore *mySem;
+
 /* work_queue_enqueue():
  *
  * req: A pointer to a request to be processed. You can assume it is
@@ -30,7 +36,14 @@
 
 void work_queue_enqueue(request_t *req)
 {
-        (void) req; /* Avoid compiler error */
+        //think this just adds stuff to the buffer, pre much just wana make sure somone else isnt doing at same time so get correct pointers
+        lock_acquire(myLock);
+        V(mySem);
+        request_buffer[tail] =  req;
+        tail++;
+        lock_release(myLock);
+
+        
 }
 
 /* 
@@ -50,8 +63,14 @@ void work_queue_enqueue(request_t *req)
 
 request_t *work_queue_get_next(void)
 {
+        lock_acquire(myLock);
+        request_t *req;
+        P(mySem);
+        req = request_buffer[head];
+        head ++;
+        lock_release(myLock);
 
-        return NULL;
+        return req;
 }
 
 
@@ -71,7 +90,13 @@ request_t *work_queue_get_next(void)
 
 int work_queue_setup(void)
 {
-        return ENOSYS;
+        mySem = sem_create("mySem", 0);    // gota do that error checking shit if theres enough mem
+        head = tail = 0;
+        myLock = lock_create("myLock");
+        for(int i = 0 ; i <= 1000 ; i++){
+                request_buffer[i] = NULL;
+        }     
+        return 0;
 
 }
 

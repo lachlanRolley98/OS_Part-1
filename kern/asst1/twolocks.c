@@ -8,6 +8,11 @@
 
 /********************************************************************************
  Document your resource order here. 
+
+//game plan, im guessing these guys since they need 2 locks to function are getting them in alternate orders
+//this spin things just like oi nah bob, i aint giving u my lock till i get the other one
+// thats fine but only if somone else isnt doing the same with the other lock
+// so we gota make sure they only get the second lock "lets go order a->b" if a isnt already taken 
 ********************************************************************************/
 
 
@@ -25,6 +30,18 @@ static struct semaphore *finished;
 /* Bill, Ben, Bob and Bruce are four threads that simply spin for a while,
    acquiring and releasing locks */
 
+
+
+
+//game plan, im guessing these guys since they need 2 locks to function are getting them in alternate orders
+//this spin things just like oi nah bob, i aint giving u my lock till i get the other one
+// thats fine but only if somone else isnt doing the same with the other lock
+// so we gota make sure they only get the second lock "lets go order a->b" if a isnt already taken 
+
+
+
+
+
 static void bill(void * unusedpointer, unsigned long unusedint)
 {
         int i;
@@ -35,10 +52,13 @@ static void bill(void * unusedpointer, unsigned long unusedint)
 
         for (i = 0; i < NUM_LOOPS; i++) {
                 
+                lock_acquire(locka); // added
+
                 lock_acquire(lockb);
                 
                 holds_lockb();          /* Critical section */
                 
+                lock_release(locka); // added
                 lock_release(lockb);
 
                 lock_acquire(locka);
@@ -49,8 +69,8 @@ static void bill(void * unusedpointer, unsigned long unusedint)
                                          the locks */
                 holds_locka_and_b();
                 
-                lock_release(lockb);
                 lock_release(locka);
+                lock_release(lockb);
         }
 
         kprintf("Bill says 'bye'\n");
@@ -68,10 +88,13 @@ static void bruce(void * unusedpointer, unsigned long unusedint)
 
         for (i = 0; i < NUM_LOOPS; i++) {
                 
+                lock_acquire(locka); // added
+
                 lock_acquire(lockb);
                 
                 holds_lockb();          /* Critical section */
                 
+                lock_release(locka); // added
                 lock_release(lockb);
 
         }
@@ -97,8 +120,8 @@ static void ben(void * unusedpointer, unsigned long unusedint)
                 
                 lock_release(locka);
 
+                lock_acquire(locka);  // did a sneaky switcharoo
                 lock_acquire(lockb);
-                lock_acquire(locka);
 
                                         /* Ben now holds both locks and can do
                                          what ever ben needs to do while holding
